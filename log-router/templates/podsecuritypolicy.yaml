@@ -1,0 +1,33 @@
+{{- if .Values.rbac.pspEnabled }}
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ template "fluentd-router.fullname" . }}
+  labels:
+    app: {{ include "fluentd-router.name" . }}
+    chart: {{ include "fluentd-router.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    seccomp.security.alpha.kubernetes.ioe/allowedProfileNames: '*'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: '*'
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  volumes:
+  - '*'
+  requiredDropCapabilities:
+  - ALL
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+{{- end }}

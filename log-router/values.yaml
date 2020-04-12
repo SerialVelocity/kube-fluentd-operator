@@ -1,87 +1,87 @@
 # Copyright © 2018 VMware, Inc. All Rights Reserved.
 # SPDX-License-Identifier: BSD-2-Clause
 
-# Default values for fluentd-router.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-rbac:
-  create: false
-
-serviceAccountName: "default"
-
-# Possible values: default|fake|fs|multimap
-datasource: default
-
-defaultConfigmap: "fluentd-config"
+nameOverride: ""
+fullnameOverride: ""
 
 image:
   repository: jvassev/kube-fluentd-operator
-  pullPolicy: IfNotPresent
   tag: latest
+  pullPolicy: ""
   pullSecret: ""
 
+rbac:
+  create: false
+  pspEnabled: false
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+prometheus:
+  enabled: false
+  serviceMonitor:
+    create: false
+    additionalLabels: {}
+
+updateStrategy: {}
+priorityClassName: ""
+nodeSelector: {}
+podAnnotations: {}
+podLabels: {}
+tolerations: []
+initContainers: []
+
+dnsPolicy: ""
+dnsConfig: {}
+hostAliases: []
 
 logLevel: debug
 interval: 45
 kubeletRoot: /var/lib/kubelet
+defaultConfigmap: "fluentd-config"
+
+# Possible values: default|fake|fs|multimap
+datasource:
+  type: default
+  # Use with datasource: multimap, the label selector will be used for finding ConfigMaps inside
+  # the Namespaces in order to compile the Namespace fluentd configuration. The simple concatenation
+  # is used and the ConfigMap is then processed for macros.
+  labelSelector:
+    matchLabels: {}
 
 meta:
   key: ""
   values: {}
 
-# Use with datasource: multimap, the label selector will be used for finding ConfigMaps inside
-# the Namespaces in order to compile the Namespace fluentd configuration. The simple concatenation
-# is used and the ConfigMap is then processed for macros.
-labelSelector:
-  matchLabels: {}
-
-#extraVolumes:
-#   - name: es-certs
-#     secret:
-#       defaultMode: 420
-#       secretName: es-certs
-
-#  - name: es-certs
-#    mountPath: /certs
-#    readOnly: true
-
+namespaces: []
+allowTagExpansion: false
 
 fluentd:
-  extraEnv: {}
+  env:
+    secretName: ""
+  extraEnvs: []
   resources: {}
-# extraVolumeMounts:
+  additionalArgs: []
+  extraVolumeMounts: []
 #  - name: es-certs
 #    mountPath: /certs
 #    readOnly: true
 
 reloader:
-  extraEnv: {}
+  env:
+    secretName: ""
+  extraEnvs: []
   resources: {}
-# extraVolumeMounts:
+  additionalArgs: []
+  extraVolumeMounts: []
 #  - name: es-certs
 #    mountPath: /certs
 #    readOnly: true
 
-tolerations: []
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
-  # requests:
-  #  cpu: 100m
-  #  memory: 128Mi
-
-updateStrategy: {}
-#  type: RollingUpdate
-
-## Annotations to add to the DaemonSet's Pods
-#podAnnotations:
-#  scheduler.alpha.kubernetes.io/tolerations: '[{"key": "example", "value": "foo"}]'
-
-prometheusEnabled: false
-
-allowTagExpansion: false
+extraVolumes: []
+#- name: es-certs
+#  secret:
+#    defaultMode: 420
+#    secretName: es-certs

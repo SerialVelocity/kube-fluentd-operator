@@ -9,7 +9,7 @@ metadata:
   name: {{ template "fluentd-router.fullname" . }}
   labels:
     app: {{ template "fluentd-router.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    chart: {{ template "fluentd-router.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
@@ -17,123 +17,164 @@ spec:
     matchLabels:
       app: {{ template "fluentd-router.name" . }}
       release: {{ .Release.Name }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | trimSuffix "\n" | nindent 4 }}
+  {{- end }}
   template:
     metadata:
       labels:
         app: {{ template "fluentd-router.name" . }}
         release: {{ .Release.Name }}
+        {{- if .Values.podLabels }}
+        {{- toYaml .Values.podLabels | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
       annotations:
-        checksum/fluentd-extraenv: {{ toYaml .Values.fluentd.extraEnv | sha256sum }}
-        checksum/reloader-extraenv: {{ toYaml .Values.reloader.extraEnv | sha256sum }}
-      {{- if .Values.podAnnotations }}
-{{ toYaml .Values.podAnnotations | indent 8 }}
-      {{- end }}
+        {{- if .Values.prometheus.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "24231"
+        {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- toYaml .Values.podAnnotations | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      serviceAccountName: {{ template "fluentd-router.serviceAccountName" . }}
       {{- if .Values.image.pullSecret }}
       imagePullSecrets:
       - name: {{ .Values.image.pullSecret }}
       {{- end }}
-      serviceAccountName: {{ if .Values.rbac.create }}{{ template "fluentd-router.fullname" . }}{{ else }}"{{ .Values.serviceAccountName }}"{{ end }}
-      containers:
-        - name: fluentd
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          env:
-          - name: K8S_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-        {{- range $key, $value := .Values.fluentd.extraEnv }}
-          - name: {{ $key }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "fluentd-router.fullname" $root }}
-                key: fluentd.{{ $key }}
-        {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.prometheusEnabled }}
-          ports:
-          - name: prometheus
-            containerPort: 24231
-          {{- end }}
-          volumeMounts:
-          - name: fluentconf
-            mountPath: /fluentd/etc
-          - name: varlog
-            mountPath: /var/log
-          - name: kubeletroot
-            mountPath: "{{ .Values.kubeletRoot }}"
-            readOnly: true
-          - name: varlibdockercontainers
-            mountPath: /var/lib/docker/containers
-            readOnly: true
-{{- if .Values.fluentd.extraVolumeMounts }}
-{{ toYaml .Values.fluentd.extraVolumeMounts | indent 10 }}
-{{- end }}
-          resources:
-{{ toYaml .Values.fluentd.resources | indent 12 }}
-        - name: reloader
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if .Values.reloader.extraEnv }}
-          env:
-        {{- range $key, $value := .Values.reloader.extraEnv }}
-          - name: {{ $key }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "fluentd-router.fullname" $root }}
-                key: reloader.{{ $key }}
-        {{- end }}
-          {{- end }}
-          command:
-          -  /bin/config-reloader
-          - --datasource={{ .Values.datasource }}
-          - --default-configmap={{ .Values.defaultConfigmap }}
-          - --interval={{ .Values.interval }}
-          - --log-level={{ .Values.logLevel }}
-          - --output-dir=/fluentd/etc
-          - --templates-dir=/templates
-          - --id={{ template "fluentd-router.fullname" . }}
-          - --fluentd-binary
-          - /usr/local/bundle/bin/fluentd -p /fluentd/plugins
-          - --kubelet-root
-          - "{{ .Values.kubeletRoot }}"
-          {{- if .Values.meta.key }}
-          - --meta-key={{ .Values.meta.key }}
-          - --meta-values={{- range $k, $v := .Values.meta.values }}{{$k}}={{$v}},
-          {{- end }}
-          {{- end }}
-          {{- if .Values.prometheusEnabled }}
-          - --prometheus-enabled
-          {{- end }}
-          {{- if and (eq .Values.datasource "multimap") .Values.labelSelector.matchLabels }}
-          - --label-selector={{- range $k, $v := .Values.labelSelector.matchLabels }}{{$k}}={{$v}},
-          {{- end }}
-          {{- end }}
-          {{- range  .Values.namespaces }}
-          - --namespaces
-          - "{{ . }}"
-          {{- end }}
-          {{- if .Values.allowTagExpansion }}
-          - --allow-tag-expansion
-          {{- end }}
-          volumeMounts:
-          - name: fluentconf
-            mountPath: /fluentd/etc
-{{- if .Values.reloader.extraVolumeMounts }}
-{{ toYaml .Values.reloader.extraVolumeMounts | indent 10 }}
-{{- end }}
-          resources:
-{{ toYaml .Values.reloader.resources | indent 12 }}
-{{- if .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
-{{- end }}
-{{- if .Values.tolerations }}
-      tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector: {{- toYaml .Values.nodeSelector | trimSuffix "\n" | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- toYaml .Values.tolerations | trimSuffix "\n" | nindent 6 }}
       {{- end}}
+      {{- if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | trimSuffix "\n" | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostAliases }}
+      hostAliases: {{ toYaml .Values.hostAliases | trimSuffix "\n" | nindent 6 }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers: {{- toYaml .Values.initContainers | trimSuffix "\n" | nindent 6 }}
+      {{- end }}
+      containers:
+      - name: fluentd
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        {{- if .Values.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- end }}
+        {{- if .Values.fluentd.additionalArgs }}
+        args: {{- toYaml .Values.fluentd.additionalArgs | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        env:
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        {{- if .Values.fluentd.extraEnvs }}
+        {{- toYaml .Values.fluentd.extraEnvs | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        {{- if .Values.fluentd.env.secretName }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.fluentd.env.secretName }}
+        {{- end }}
+        {{- if .Values.prometheus.enabled }}
+        ports:
+        - name: prometheus
+          containerPort: 24231
+        {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: fluentconf
+          mountPath: /fluentd/etc
+        - name: tmpdir
+          mountPath: /tmp
+        - name: varlog
+          mountPath: /var/log
+        - name: kubeletroot
+          mountPath: "{{ .Values.kubeletRoot }}"
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        {{- if .Values.fluentd.extraVolumeMounts }}
+        {{- toYaml .Values.fluentd.extraVolumeMounts | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        {{- if .Values.fluentd.resources }}
+        resources: {{- toYaml .Values.fluentd.resources | trimSuffix "\n" | nindent 10 }}
+        {{- end }}
+      - name: reloader
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        {{- if .Values.image.pullPolicy }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- end }}
+        env:
+        {{- if .Values.reloader.extraEnvs }}
+        {{- toYaml .Values.reloader.extraEnvs | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        {{- if .Values.reloader.env.secretName }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.reloader.env.secretName }}
+        {{- end }}
+        command:
+        - /bin/config-reloader
+        args:
+        - --datasource={{ .Values.datasource.type }}
+        - --default-configmap={{ .Values.defaultConfigmap }}
+        - --interval={{ .Values.interval }}
+        - --log-level={{ .Values.logLevel }}
+        - --output-dir=/fluentd/etc
+        - --templates-dir=/templates
+        - --id={{ template "fluentd-router.fullname" . }}
+        - --fluentd-binary=/usr/local/bundle/bin/fluentd -p /fluentd/plugins
+        - --kubelet-root={{ .Values.kubeletRoot }}
+        {{- if .Values.meta.key }}
+        - --meta-key={{ .Values.meta.key }}
+        - --meta-values={{- range $k, $v := .Values.meta.values }}{{$k}}={{$v}},
+        {{- end }}
+        {{- end }}
+        {{- if .Values.prometheus.enabled }}
+        - --prometheus-enabled
+        {{- end }}
+        {{- if and (eq .Values.datasource.type "multimap") .Values.datasource.labelSelector.matchLabels }}
+        - --label-selector={{- range $k, $v := .Values.datasource.labelSelector.matchLabels }}{{$k}}={{$v}},
+        {{- end }}
+        {{- end }}
+        {{- range  .Values.namespaces }}
+        - --namespaces="{{ . }}"
+        {{- end }}
+        {{- if .Values.allowTagExpansion }}
+        - --allow-tag-expansion
+        {{- end }}
+        {{- if .Values.reloader.additionalArgs }}
+        {{- toYaml .Values.reloader.additionalArgs | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        securityContext:
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: fluentconf
+          mountPath: /fluentd/etc
+        - name: tmpdir
+          mountPath: /tmp
+        {{- if .Values.reloader.extraVolumeMounts }}
+        {{- toYaml .Values.reloader.extraVolumeMounts | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+        {{- if .Values.reloader.resources }}
+        resources: {{- toYaml .Values.reloader.resources | trimSuffix "\n" | nindent 10 }}
+        {{- end }}
       volumes:
       - name: fluentconf
+        emptyDir: {}
+      - name: tmpdir
         emptyDir: {}
       - name: kubeletroot
         hostPath:
@@ -144,10 +185,6 @@ spec:
       - name: varlibdockercontainers
         hostPath:
           path: /var/lib/docker/containers
-{{- if .Values.extraVolumes }}
-{{ toYaml .Values.extraVolumes | indent 6 }}
-{{- end }}
-  {{- if .Values.updateStrategy}}
-  updateStrategy:
-{{ toYaml .Values.updateStrategy | indent 4 }}
-  {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- toYaml .Values.extraVolumes | trimSuffix "\n" | nindent 6 }}
+      {{- end }}

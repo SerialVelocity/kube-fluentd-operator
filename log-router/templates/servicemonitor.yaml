@@ -1,0 +1,34 @@
+{{- if .Values.prometheus.serviceMonitor.create }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "fluentd-router.fullname" . }}
+  labels:
+    app: {{ template "fluentd-router.name" . }}
+    chart: {{ template "fluentd-router.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- if .Values.prometheus.serviceMonitor.additionalLabels }}
+    {{- toYaml .Values.prometheus.serviceMonitor.additionalLabels | trimSuffix "\n" | nindent 4 }}
+    {{- end }}
+  {{- with .Values.prometheus.serviceMonitor.namespace }}
+  namespace: {{ . }}
+  {{- end }}
+spec:
+  endpoints:
+  - port: prometheus
+    honorLabels: true
+    {{- with .Values.prometheus.serviceMonitor.interval }}
+    interval: {{ . }}
+    {{- end }}
+    {{- with .Values.prometheus.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ . }}
+    {{- end }}
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app: {{ template "fluentd-router.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}
