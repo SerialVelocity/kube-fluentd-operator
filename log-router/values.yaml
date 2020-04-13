@@ -32,6 +32,7 @@ podAnnotations: {}
 podLabels: {}
 tolerations: []
 initContainers: []
+readOnlyRootFilesystem: true
 
 dnsPolicy: ""
 dnsConfig: {}

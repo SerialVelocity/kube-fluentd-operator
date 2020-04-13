@@ -91,7 +91,7 @@ spec:
           containerPort: 24231
         {{- end }}
         securityContext:
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: {{ .readOnlyRootFilesystem }}
         volumeMounts:
         - name: fluentconf
           mountPath: /fluentd/etc
@@ -159,7 +159,7 @@ spec:
         {{- toYaml .Values.reloader.additionalArgs | trimSuffix "\n" | nindent 8 }}
         {{- end }}
         securityContext:
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: {{ .readOnlyRootFilesystem }}
         volumeMounts:
         - name: fluentconf
           mountPath: /fluentd/etc

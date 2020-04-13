@@ -14,7 +14,7 @@ metadata:
 spec:
   privileged: false
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
+  readOnlyRootFilesystem: {{ .readOnlyRootFilesystem }}
   volumes:
   - '*'
   requiredDropCapabilities:
