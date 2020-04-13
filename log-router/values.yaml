@@ -38,7 +38,7 @@ dnsPolicy: ""
 dnsConfig: {}
 hostAliases: []
 
-logLevel: debug
+logLevel: info
 interval: 45
 kubeletRoot: /var/lib/kubelet
 defaultConfigmap: "fluentd-config"
