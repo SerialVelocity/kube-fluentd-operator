@@ -41,6 +41,9 @@ spec:
 {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
 {{- end }}
+{{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | trimSuffix "\n" | nindent 8 }}
+{{- end }}
       containers:
         - name: fluentd
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
